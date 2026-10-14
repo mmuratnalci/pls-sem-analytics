@@ -1,3 +1,4 @@
 streamlit
-pandas
+pandas<3
 openpyxl
+plspm==0.5.7
