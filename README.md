@@ -20,15 +20,31 @@ ağırlıklandırma şeması kullanılarak yapılır. Dış yükler kütüphanen
 edilmiş gösterge-yapı korelasyonlarıdır. Cronbach's Alpha standart kovaryans
 formülüyle, rho_c standartlaştırılmış dış yüklerden
 `(Σλ)² / ((Σλ)² + Σ(1−λ²))`, AVE ise `mean(λ²)` formülüyle hesaplanır. HTMT,
-mutlak maddeler arası korelasyonlardan heterotrait ortalamasının monotrait
-ortalamalarının geometrik ortalamasına oranıdır. HTMT, her yapı için birden
-fazla madde olmadığında tanımlı değildir; bu uygulama analiz öncesinde minimum
-madde sayısını doğrular.
+klasik HTMT'dir (HTMT+ değildir): mutlak Pearson madde korelasyonlarından,
+heterotrait korelasyonlarının ortalamasının monotrait korelasyon ortalamalarının
+geometrik ortalamasına oranı olarak hesaplanır. Sonuç tablosunda bu ayrım
+"HTMT (Klasik)" olarak belirtilir. HTMT, her yapı için birden fazla madde
+olmadığında tanımlı değildir; bu uygulama analiz öncesinde minimum madde
+sayısını doğrular.
+
+Her yapının dış yükleri toplamı negatifse, yüklerin tamamı ve ilgili gizil
+değişken skoru aynı anda −1 ile çarpılarak yapı yönü belirlenir. Yol katsayıları,
+kaynak ve hedef yapıların yön değişimleriyle uyumlu olacak şekilde dönüştürülür.
+Böylece tabloda gösterilen yükler ile rho_c ve AVE aynı yönlendirilmiş yükleri
+kullanır; CR formülünde negatif yükler varsa işaretleri korunur. `plspm` yakınsama
+ölçütü (ağırlık farklarının kareler toplamı `< 1e-7`) sağlanmazsa en çok 1000
+iterasyondan sonra hata üretir. Sonuçlardaki yakınsama durumu, hesaplayıcının
+hata vermeden sonuç üretmesine dayanır; iterasyon sayısı kütüphanenin herkese
+açık sonuç API'sinde bulunmadığı için raporlanmaz.
 
 Eksik veya hesaplanamayan değerler için yapay sonuç üretilmez. Bu tahminler
-SmartPLS'in algoritma, varsayılan ayarlar, veri işleme ve yuvarlama
-tercihlerinden farklı olabileceği için SmartPLS ile sayısal olarak birebir
-eşleşme taahhüt edilmez. Dış yükler, güvenirlik ve HTMT sonuçları ayrı
+SmartPLS ile sayısal olarak birebir eşleşmeyebilir: bu uygulama Python `plspm`
+0.5.7'nin PLS Path Modeling uygulamasını, standartlaştırılmış maddeler ve
+path-weighting şemasıyla kullanırken SmartPLS sürümü ve seçenekleri farklı
+PLS-SEM algoritma/başlangıç, ağırlıklandırma, işaret değiştirme, durdurma
+ölçütü, eksik veri ve ordinal veri işleme tercihleri kullanabilir. Bu modül
+SmartPLS'e özgü PLSc/consistent PLS, HTMT+, bootstrap güven aralıkları veya
+anlamlılık testlerini hesaplamaz. Dış yükler, güvenirlik ve HTMT sonuçları ayrı
 tablolar halinde gösterilir ve Excel çalışma kitabına veya ayrı CSV dosyalarına
 aktarılabilir.
 

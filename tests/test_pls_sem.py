@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -8,6 +9,7 @@ from pls_sem import (
     calculate_htmt,
     cronbach_alpha,
     estimate_measurement_model,
+    find_out_of_range_items,
     get_measurement_items,
 )
 
@@ -73,7 +75,7 @@ class MeasurementModelTests(unittest.TestCase):
         )
 
         result = calculate_htmt(data, {"A": ["A1", "A2"], "B": ["B1", "B2"]})
-        self.assertAlmostEqual(result.loc[0, "HTMT"], expected)
+        self.assertAlmostEqual(result.loc[0, "HTMT (Klasik)"], expected)
 
     def test_htmt_is_undefined_when_monotrait_correlation_is_zero(self):
         data = pd.DataFrame(
@@ -87,7 +89,19 @@ class MeasurementModelTests(unittest.TestCase):
 
         result = calculate_htmt(data, {"A": ["A1", "A2"], "B": ["B1", "B2"]})
 
-        self.assertTrue(np.isnan(result.loc[0, "HTMT"]))
+        self.assertTrue(np.isnan(result.loc[0, "HTMT (Klasik)"]))
+
+    def test_likert_range_validation_ignores_missing_and_non_item_columns(self):
+        data = pd.DataFrame(
+            {
+                "PQ1": [1, 3, 5, np.nan],
+                "PQ2": [1, 2, 3, 4],
+                "Participant ID": [0, 8, 9, 10],
+            }
+        )
+        data.loc[0, "PQ2"] = 0
+
+        self.assertEqual(find_out_of_range_items(data), ["PQ2"])
 
     def test_model_returns_loadings_reliability_validity_and_paths(self):
         result = estimate_measurement_model(sample_data())
@@ -101,6 +115,7 @@ class MeasurementModelTests(unittest.TestCase):
         self.assertEqual(len(result.validity), 15)
         self.assertEqual(len(result.paths), 8)
         self.assertEqual(result.observations, 180)
+        self.assertTrue(result.converged)
         for _, reliability in result.reliability.iterrows():
             loadings = result.loadings.loc[
                 result.loadings["Ölçek"] == reliability["Ölçek"], "Dış yük"
@@ -112,6 +127,54 @@ class MeasurementModelTests(unittest.TestCase):
             )
             self.assertAlmostEqual(reliability["Composite Reliability (rho_c)"], expected_rho_c)
             self.assertAlmostEqual(reliability["AVE"], np.mean(loadings**2))
+
+    def test_loading_orientation_and_paths_are_transformed_consistently(self):
+        data = sample_data()
+        scale_items = get_measurement_items(data)
+        loadings = {
+            item: -0.8 if scale == "PQ" else 0.8
+            for scale, items in scale_items.items()
+            for item in items
+        }
+        path_coefficients = pd.DataFrame(
+            0.0, index=scale_items, columns=scale_items
+        )
+        path_coefficients.loc["CS", "PQ"] = 0.25
+
+        class StubModel:
+            def outer_model(self):
+                return pd.DataFrame(
+                    {"loading": pd.Series(loadings, dtype=float)}
+                )
+
+            def path_coefficients(self):
+                return path_coefficients
+
+        with patch("pls_sem.Plspm", return_value=StubModel()):
+            result = estimate_measurement_model(data)
+
+        pq_loadings = result.loadings.loc[
+            result.loadings["Ölçek"] == "PQ", "Dış yük"
+        ]
+        self.assertTrue((pq_loadings > 0).all())
+        self.assertAlmostEqual(
+            result.paths.query("Kaynak == 'PQ' and Hedef == 'CS'")[
+                "Yol katsayısı"
+            ].iloc[0],
+            -0.25,
+        )
+        reliability = result.reliability.set_index("Ölçek").loc["PQ"]
+        oriented = pq_loadings.to_numpy()
+        self.assertAlmostEqual(
+            reliability["Composite Reliability (rho_c)"],
+            oriented.sum() ** 2 / (oriented.sum() ** 2 + (1 - oriented**2).sum()),
+        )
+
+    def test_nonconvergence_is_reported_as_an_analysis_error(self):
+        data = sample_data()
+        with patch("pls_sem.Plspm", side_effect=Exception("Could not converge")):
+            with self.assertRaisesRegex(ModelValidationError, "Could not converge"):
+                estimate_measurement_model(data)
 
     def test_missing_rows_are_dropped_and_id_is_not_analyzed(self):
         data = sample_data()

@@ -36,6 +36,7 @@ class MeasurementResults:
     observations: int
     dropped_rows: int
     item_columns: tuple
+    converged: bool
 
 
 def detect_scale(column_name):
@@ -50,6 +51,17 @@ def get_measurement_items(data):
         if scale:
             items[scale].append(column)
     return {scale: columns for scale, columns in items.items() if columns}
+
+
+def find_out_of_range_items(data):
+    out_of_range = []
+    for column in data.columns:
+        if detect_scale(column) is None:
+            continue
+        values = pd.to_numeric(data[column], errors="coerce").dropna()
+        if not values.between(1, 5).all():
+            out_of_range.append(column)
+    return out_of_range
 
 
 def cronbach_alpha(data):
@@ -86,9 +98,13 @@ def calculate_htmt(data, scale_items):
                 else np.nan
             )
             results.append(
-                {"Yapı 1": first, "Yapı 2": second, "HTMT": htmt}
+                {
+                    "Yapı 1": first,
+                    "Yapı 2": second,
+                    "HTMT (Klasik)": htmt,
+                }
             )
-    return pd.DataFrame(results, columns=["Yapı 1", "Yapı 2", "HTMT"])
+    return pd.DataFrame(results, columns=["Yapı 1", "Yapı 2", "HTMT (Klasik)"])
 
 
 def _path_matrix(scales, selected_paths):
@@ -202,15 +218,16 @@ def estimate_measurement_model(data, selected_paths=None):
     outer_model = model.outer_model()
     loading_rows = []
     reliability_rows = []
+    orientation = {}
     for scale, items in scale_items.items():
         loadings = outer_model.loc[items, "loading"].astype(float)
+        orientation[scale] = -1 if loadings.sum() < 0 else 1
+        loadings = loadings * orientation[scale]
         loading_rows.extend(
             {"Ölçek": scale, "Madde": item, "Dış yük": float(loadings[item])}
             for item in items
         )
         oriented_loadings = loadings.to_numpy()
-        if oriented_loadings.sum() < 0:
-            oriented_loadings = -oriented_loadings
         loading_sum = oriented_loadings.sum()
         residual_variance = 1 - oriented_loadings**2
         composite_denominator = loading_sum**2 + residual_variance.sum()
@@ -233,7 +250,11 @@ def estimate_measurement_model(data, selected_paths=None):
         {
             "Kaynak": source,
             "Hedef": target,
-            "Yol katsayısı": float(path_coefficients.at[target, source]),
+            "Yol katsayısı": float(
+                path_coefficients.at[target, source]
+                * orientation[source]
+                * orientation[target]
+            ),
         }
         for source, target in edges
     ]
@@ -253,4 +274,5 @@ def estimate_measurement_model(data, selected_paths=None):
         observations=len(numeric_data),
         dropped_rows=original_rows - len(numeric_data),
         item_columns=item_columns,
+        converged=True,
     )

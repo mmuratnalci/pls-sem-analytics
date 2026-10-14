@@ -8,6 +8,7 @@ from pls_sem import (
     DEFAULT_PATHS,
     detect_scale,
     estimate_measurement_model,
+    find_out_of_range_items,
     get_measurement_items,
 )
 
@@ -139,6 +140,13 @@ if uploaded_file is not None:
             "olduğunu denetler."
         )
         st.dataframe(statistics, use_container_width=True, hide_index=True)
+        out_of_range_items = find_out_of_range_items(data)
+        if out_of_range_items:
+            st.warning(
+                "1–5 aralığı dışında yanıt içeren maddeler: "
+                + ", ".join(map(str, out_of_range_items))
+                + ". Analizden önce bu yanıtları kontrol edin."
+            )
         st.download_button(
             "Temel istatistikleri CSV olarak indir",
             data=statistics.to_csv(index=False).encode("utf-8-sig"),
@@ -215,7 +223,13 @@ if uploaded_file is not None:
             elif results is not None:
                 st.success(
                     f"Analiz tamamlandı: {results.observations:,} katılımcı kullanıldı; "
-                    f"{results.dropped_rows:,} eksik yanıtlı satır çıkarıldı."
+                    f"{results.dropped_rows:,} eksik yanıtlı satır çıkarıldı. "
+                    f"PLS algoritması yakınsadı: {'Evet' if results.converged else 'Hayır'}."
+                )
+                st.caption(
+                    "Yüklerin yönü, her yapıda yüklerin toplamı pozitif olacak "
+                    "şekilde belirlenmiştir; yol katsayıları aynı yönlendirmeye "
+                    "göre dönüştürülür. HTMT tablosu klasik HTMT yöntemini kullanır."
                 )
                 result_tables = {
                     "Dış yükler": results.loadings,
