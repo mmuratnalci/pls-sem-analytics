@@ -2,3 +2,12 @@ streamlit
 pandas<3
 openpyxl
 plspm==0.5.7
+streamlit
+plotly
+numpy
+scikit-learn
+sentence-transformers
+bertopic
+umap-learn
+hdbscan
+xlsxwriter

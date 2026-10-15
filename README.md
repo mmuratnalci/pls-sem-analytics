@@ -55,3 +55,7 @@ pip install -r requirements.txt
 streamlit run app.py
 python -m unittest discover -s tests
 ```
+
+## BERTopic Yorum Analizi
+
+`streamlit run topic_app.py` ile çalıştırın (Streamlit Community Cloud'da ana dosya olarak `topic_app.py` seçin; Python 3.11 önerilir). Mantık `topic_analysis.py` içindedir.
