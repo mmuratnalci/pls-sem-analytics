@@ -55,3 +55,10 @@ pip install -r requirements.txt
 streamlit run app.py
 python -m unittest discover -s tests
 ```
+
+## BERTopic yorum analizi
+
+`streamlit run topic_app.py` ile çalışır (mevcut PLS-SEM uygulaması `app.py` olarak
+korunmuştur). Mantık `topic_model.py` içindedir; Python 3.11 (`.python-version`) ve CPU
+için `requirements.txt` bağımlılıkları kullanılır. Streamlit Cloud'da ana dosya olarak
+`topic_app.py` seçin.
